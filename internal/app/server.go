@@ -1,4 +1,4 @@
-package cmd
+package app
 
 import (
 	"database/sql"
@@ -19,7 +19,7 @@ func InitializeServer(ip, port string, db *sql.DB) *Server {
 	return &Server{IP: ip, Port: port, DB: db}
 }
 
-func (s *Server) StartServer() error {
+func (s *Server) StartServer() {
 	addr := fmt.Sprintf("%s:%s", s.IP, s.Port)
 
 	listenConfig := fiber.ListenConfig{
@@ -39,5 +39,5 @@ func (s *Server) StartServer() error {
 	log.Printf("Prefork: %v\n", listenConfig.EnablePrefork)
 	log.Printf("PID: %d\n", os.Getpid())
 
-	return app.Listen(addr, listenConfig)
+	log.Fatal(app.Listen(addr, listenConfig))
 }
