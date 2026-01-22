@@ -1,22 +1,21 @@
 package app
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/nullrish/task-manager-go/internal/db"
 )
 
 type Server struct {
 	IP   string
 	Port string
-	DB   *sql.DB
 }
 
-func InitializeServer(ip, port string, db *sql.DB) *Server {
-	return &Server{IP: ip, Port: port, DB: db}
+func InitializeServer(ip, port string) *Server {
+	return &Server{IP: ip, Port: port}
 }
 
 func (s *Server) StartServer() {
@@ -26,12 +25,22 @@ func (s *Server) StartServer() {
 		DisableStartupMessage: true,
 		EnablePrefork:         false,
 	}
+
 	app := fiber.New(fiber.Config{
 		AppName: "Task Manager Go",
 	})
 	app.Get("/", func(c fiber.Ctx) error {
 		return c.SendString("Khello World!")
 	})
+
+	connString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s",
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASSWORD"),
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"),
+		os.Getenv("DB_NAME"))
+
+	db.InitializeDatabase(connString)
 
 	log.Println("🚀 Starting Server....")
 	log.Printf("Mode: %s\n", app.Config().AppName)
