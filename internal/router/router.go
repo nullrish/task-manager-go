@@ -3,13 +3,9 @@ package router
 import "github.com/gofiber/fiber/v3"
 
 func ConfigureRoutes(app *fiber.App) {
-	api := app.Group("/api", func(c fiber.Ctx) error {
-		return c.SendString("API end points are working perfectly fine ✅")
-	})
+	api := app.Group("/api")
 
-	auth := api.Group("/auth", func(c fiber.Ctx) error {
-		return c.SendString("Auth end points are working perfectly fine ✅")
-	})
+	auth := api.Group("/auth")
 
 	auth.Post("/register", func(c fiber.Ctx) error {
 		return c.SendString("Register end point is working fine ✅")
