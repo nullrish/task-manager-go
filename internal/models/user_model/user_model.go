@@ -1,4 +1,4 @@
-package models
+package usermodel
 
 import (
 	"github.com/google/uuid"

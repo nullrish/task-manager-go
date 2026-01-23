@@ -1,11 +1,12 @@
-package repositories
+package userrepository
 
 import (
 	"context"
 	"database/sql"
 
 	"github.com/google/uuid"
-	"github.com/nullrish/task-manager-go/internal/models"
+
+	models "github.com/nullrish/task-manager-go/internal/models/user_model"
 )
 
 type UserRepository interface {
