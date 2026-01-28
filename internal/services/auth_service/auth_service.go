@@ -54,3 +54,6 @@ func (s *AuthService) RegisterUser(ctx context.Context, user *models.UserRequest
 	}
 	return s.repo.CreateUser(ctx, user)
 }
+
+func (s *AuthService) LoginUser(ctx context.Context, user *models.UserRequest) (string, error) {
+}

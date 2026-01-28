@@ -14,7 +14,7 @@ type User struct {
 }
 
 type UserRequest struct {
-	Username string `json:"username" validate:"required,username_regex,min=3,max=32"`
+	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
