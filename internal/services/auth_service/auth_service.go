@@ -1,4 +1,4 @@
-package services
+package authservice
 
 import (
 	"context"
@@ -10,15 +10,15 @@ import (
 	"github.com/nullrish/task-manager-go/internal/util/validator"
 )
 
-type AuthService struct {
+type Service struct {
 	repo repo.UserRepository
 }
 
-func NewAuthService(repo repo.UserRepository) *AuthService {
-	return &AuthService{repo}
+func NewAuthService(repo repo.UserRepository) *Service {
+	return &Service{repo}
 }
 
-func (s *AuthService) RegisterUser(ctx context.Context, user *models.UserRequest) error {
+func (s *Service) RegisterUser(ctx context.Context, user *models.UserRequest) error {
 	// If fields are empty then return error of missing field
 	if user.Username == "" || user.Email == "" || user.Password == "" {
 		return errors.New("missing fields required")
@@ -55,5 +55,35 @@ func (s *AuthService) RegisterUser(ctx context.Context, user *models.UserRequest
 	return s.repo.CreateUser(ctx, user)
 }
 
-func (s *AuthService) LoginUser(ctx context.Context, user *models.UserRequest) (string, error) {
+func (s *Service) LoginUser(ctx context.Context, user *models.UserRequest) (string, error) {
+	// If fields are empty then return error of missing field
+	if user.Username == "" && user.Email == "" {
+		return "", errors.New("enter username and email")
+	}
+
+	var u *models.User
+	var err error
+	if user.Email != "" {
+		u, err = s.repo.GetUserByEmail(ctx, user.Email)
+		if err != nil {
+			return "", err
+		}
+		if u == nil {
+			return "", errors.New("invalid login or password")
+		}
+	} else {
+		u, err = s.repo.GetUserByUsername(ctx, user.Username)
+		if err != nil {
+			return "", err
+		}
+		if u == nil {
+			return "", errors.New("invalid login or password")
+		}
+	}
+	matched := hashing.CheckHashedPassword(user.Password, u.Password)
+	if matched {
+		return "token", nil
+	} else {
+		return "", errors.New("invalid login or password")
+	}
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/nullrish/task-manager-go/internal/db"
+	"github.com/nullrish/task-manager-go/internal/router"
 )
 
 type Server struct {
@@ -40,7 +41,13 @@ func (s *Server) StartServer() {
 		os.Getenv("DB_PORT"),
 		os.Getenv("DB_NAME"))
 
-	db.InitializeDatabase(connString)
+	db := db.InitializeDatabase(connString)
+
+	log.Println("🚡 Configuring Routes....")
+	router.ConfigureRoutes(app, db)
+	log.Println("Successfully configured routes... ✅")
+
+	fmt.Println()
 
 	log.Println("🚀 Starting Server....")
 	log.Printf("Mode: %s\n", app.Config().AppName)

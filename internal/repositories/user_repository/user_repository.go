@@ -60,7 +60,7 @@ func (repo *userRepo) GetUserByUsername(ctx context.Context, username string) (*
 
 func (repo *userRepo) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
-		SELECT id, username, emai, password, created_at, updated_at
+		SELECT id, username, email, password, created_at, updated_at
 		FROM users WHERE email = $1
 	`
 	var user models.User
