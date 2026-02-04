@@ -12,6 +12,6 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatal(err.Error())
 	}
-	s := app.InitializeServer("127.0.0.1", "8080")
-	s.StartServer()
+	app := app.InitializeServer("127.0.0.1", "8080")
+	app.StartServer()
 }
