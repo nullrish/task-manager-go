@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	models "github.com/nullrish/task-manager-go/internal/models/user_model"
 	repo "github.com/nullrish/task-manager-go/internal/repositories/user_repository"
 	"github.com/nullrish/task-manager-go/internal/util/hashing"
@@ -86,4 +87,11 @@ func (s *Service) LoginUser(ctx context.Context, user *models.UserRequest) (stri
 	} else {
 		return "", errors.New("invalid login or password")
 	}
+}
+
+func (s *Service) GenerateRefreshToken(ctx context.Context, userID uuid.UUID) (string, error) {
+	if userID.String() == "" {
+		return "", errors.New("invalid user id")
+	}
+	return "token", nil
 }

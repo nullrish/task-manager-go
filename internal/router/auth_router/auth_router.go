@@ -18,7 +18,4 @@ func ConfigureAuthRoutes(auth fiber.Router, db *sql.DB) {
 	auth.Post("/refresh", func(c fiber.Ctx) error {
 		return c.SendString("Refresh token end point is working fine ✅")
 	})
-	auth.Post("/logout", func(c fiber.Ctx) error {
-		return c.SendString("Logout end point is working perfectly fine ✅")
-	})
 }
