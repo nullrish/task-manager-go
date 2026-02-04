@@ -30,6 +30,7 @@ func (s *Server) StartServer() {
 	app := fiber.New(fiber.Config{
 		AppName: "Task Manager Go",
 	})
+
 	app.Get("/", func(c fiber.Ctx) error {
 		return c.SendString("Khello World!")
 	})

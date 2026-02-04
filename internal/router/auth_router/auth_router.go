@@ -15,7 +15,5 @@ func ConfigureAuthRoutes(auth fiber.Router, db *sql.DB) {
 	handler := authhandler.NewHandler(service)
 	auth.Post("/register", handler.RegisterUser)
 	auth.Post("/login", handler.LoginUser)
-	auth.Post("/refresh", func(c fiber.Ctx) error {
-		return c.SendString("Refresh token end point is working fine ✅")
-	})
+	auth.Post("/refresh", handler.RefreshToken)
 }
