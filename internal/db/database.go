@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -20,9 +19,6 @@ func InitializeDatabase(connString string) *sql.DB {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	if err := db.PingContext(ctx); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-			err = ctx.Err()
-		}
 		log.Fatal("❌ Failed to open database: ", err.Error())
 	}
 	log.Println("✅ Successfully opened database!")
