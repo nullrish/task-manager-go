@@ -1,26 +1,26 @@
-package auth
+package service
 
 import (
 	"context"
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/nullrish/task-manager-go/internal/middleware/jwt"
-	userModel "github.com/nullrish/task-manager-go/internal/models/user"
-	"github.com/nullrish/task-manager-go/internal/repositories/user"
+	"github.com/nullrish/task-manager-go/internal/middleware"
+	"github.com/nullrish/task-manager-go/internal/model"
+	"github.com/nullrish/task-manager-go/internal/repository"
 	"github.com/nullrish/task-manager-go/internal/util/hashing"
 	"github.com/nullrish/task-manager-go/internal/util/validator"
 )
 
-type Service struct {
-	repo user.UserRepository
+type AuthService struct {
+	repo repository.UserRepository
 }
 
-func NewService(repo user.UserRepository) *Service {
-	return &Service{repo}
+func NewAuthService(repo repository.UserRepository) *AuthService {
+	return &AuthService{repo}
 }
 
-func (s *Service) RegisterUser(ctx context.Context, user *userModel.UserRequest) error {
+func (s *AuthService) RegisterUser(ctx context.Context, user *model.UserRequest) error {
 	// If fields are empty then return error of missing field
 	if user.Username == "" || user.Email == "" || user.Password == "" {
 		return errors.New("missing fields required")
@@ -57,13 +57,13 @@ func (s *Service) RegisterUser(ctx context.Context, user *userModel.UserRequest)
 	return s.repo.CreateUser(ctx, user)
 }
 
-func (s *Service) LoginUser(ctx context.Context, user *userModel.UserRequest) (string, error) {
+func (s *AuthService) LoginUser(ctx context.Context, user *model.UserRequest) (string, error) {
 	// If fields are empty then return error of missing field
 	if user.Username == "" && user.Email == "" {
 		return "", errors.New("enter username and email")
 	}
 
-	var u *userModel.User
+	var u *model.User
 	var err error
 	if user.Email != "" {
 		u, err = s.repo.GetUserByEmail(ctx, user.Email)
@@ -84,15 +84,15 @@ func (s *Service) LoginUser(ctx context.Context, user *userModel.UserRequest) (s
 	}
 	matched := hashing.CheckHashedPassword(user.Password, u.Password)
 	if matched {
-		return jwt.GenerateNewUserToken(u.ID)
+		return middleware.GenerateNewUserToken(u.ID)
 	} else {
 		return "", errors.New("invalid login or password")
 	}
 }
 
-func (s *Service) GenerateRefreshToken(ctx context.Context, userID uuid.UUID) (string, error) {
+func (s *AuthService) GenerateRefreshToken(ctx context.Context, userID uuid.UUID) (string, error) {
 	if userID.String() == "" {
 		return "", errors.New("invalid user id")
 	}
-	return jwt.GenerateNewUserToken(userID)
+	return middleware.GenerateNewUserToken(userID)
 }

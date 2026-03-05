@@ -1,4 +1,4 @@
-package jwt
+package middleware
 
 import (
 	"os"
@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func Middleware() fiber.Handler {
+func AuthMiddleware() fiber.Handler {
 	return jwtware.New(jwtware.Config{
 		SigningKey:   jwtware.SigningKey{Key: []byte(os.Getenv("JWT_KEY"))},
 		Extractor:    extractors.Chain(extractors.FromCookie("uusr"), extractors.FromAuthHeader("Bearer")),

@@ -1,4 +1,4 @@
-package task
+package repository
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/google/uuid"
-	model "github.com/nullrish/task-manager-go/internal/models/task"
+	"github.com/nullrish/task-manager-go/internal/model"
 )
 
 type TaskRepository interface {

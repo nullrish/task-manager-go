@@ -1,22 +1,22 @@
-package auth
+package handler
 
 import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
-	userModel "github.com/nullrish/task-manager-go/internal/models/user"
-	authService "github.com/nullrish/task-manager-go/internal/services/auth"
+	"github.com/nullrish/task-manager-go/internal/model"
+	"github.com/nullrish/task-manager-go/internal/service"
 )
 
-type Handler struct {
-	s *authService.Service
+type AuthHandler struct {
+	s *service.AuthService
 }
 
-func NewHandler(s *authService.Service) *Handler {
-	return &Handler{s}
+func NewAuthHandler(s *service.AuthService) *AuthHandler {
+	return &AuthHandler{s}
 }
 
-func (h *Handler) RegisterUser(c fiber.Ctx) error {
-	user := new(userModel.UserRequest)
+func (h *AuthHandler) RegisterUser(c fiber.Ctx) error {
+	user := new(model.UserRequest)
 	if err := c.Bind().Body(user); err != nil {
 		return err
 	}
@@ -27,8 +27,8 @@ func (h *Handler) RegisterUser(c fiber.Ctx) error {
 	return c.JSON(user)
 }
 
-func (h *Handler) LoginUser(c fiber.Ctx) error {
-	user := new(userModel.UserRequest)
+func (h *AuthHandler) LoginUser(c fiber.Ctx) error {
+	user := new(model.UserRequest)
 	if err := c.Bind().Body(user); err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func (h *Handler) LoginUser(c fiber.Ctx) error {
 	return c.SendString(token)
 }
 
-func (h *Handler) RefreshToken(c fiber.Ctx) error {
+func (h *AuthHandler) RefreshToken(c fiber.Ctx) error {
 	idParam := c.Params("id", "")
 	userID, err := uuid.Parse(idParam)
 	if err != nil {
