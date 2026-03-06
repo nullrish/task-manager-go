@@ -12,7 +12,7 @@ func ConfigureRoutes(app *fiber.App, db *sql.DB) {
 
 	r := api.Group("/auth")
 
-	ConfigureAuthRoutes(r, db)
+	configureAuthRoutes(r, db)
 
 	// Configure JWT middleware here
 	app.Use(middleware.AuthMiddleware())

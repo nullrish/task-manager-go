@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 
 	"github.com/google/uuid"
@@ -10,12 +11,12 @@ import (
 )
 
 type TaskRepository interface {
-	CreateTask(ctx context.Context, task *model.TaskRequest) error
-	GetTaskByID(ctx context.Context, tID uuid.UUID) (*model.Task, error)
-	GetTasksByUserID(ctx context.Context, uID uuid.UUID) ([]model.Task, error)
+	CreateTask(ctx context.Context, req *model.TaskRequest) (*model.Task, error)
+	GetTaskByID(ctx context.Context, taskID uuid.UUID) (*model.Task, error)
+	GetTasksByUserID(ctx context.Context, userID uuid.UUID) ([]model.Task, error)
 	GetTasks(ctx context.Context) ([]model.Task, error)
-	UpdateTask(ctx context.Context, task *model.TaskRequest) error
-	DeleteTask(ctx context.Context, tID uuid.UUID) error
+	UpdateTask(ctx context.Context, req *model.TaskRequest) (*model.Task, error)
+	DeleteTask(ctx context.Context, taskID uuid.UUID) error
 }
 
 type taskRepo struct {
@@ -26,21 +27,34 @@ func NewTaskRepository(db *sql.DB) TaskRepository {
 	return &taskRepo{db: db}
 }
 
-func (tr *taskRepo) CreateTask(ctx context.Context, task *model.TaskRequest) error {
+func (r *taskRepo) CreateTask(ctx context.Context, req *model.TaskRequest) (*model.Task, error) {
 	query := `
-		INSERT INTO tasks (task_title, task_description, user_id) VALUES ($1, $2, $3);
+		INSERT INTO tasks (task_title, task_description, user_id) VALUES ($1, $2, $3)
+		RETURNING id, task_title, task_description, created_at, updated_at, user_id;
 	`
-	_, err := tr.db.ExecContext(ctx, query, task.TaskTitle, task.TaskDescription, task.UserID)
-	return err
+	var task model.Task
+	err := r.db.QueryRowContext(ctx, query, req.TaskTitle, req.TaskDescription, req.UserID).Scan(
+		&task.ID,
+		&task.TaskTitle,
+		&task.TaskDescription,
+		&task.CreatedAt,
+		&task.UpdatedAt,
+		&task.UserID,
+	)
+	if err != nil {
+		log.Printf("(task_repository) - [CreateTask] failed for user %s: %v", req.UserID, err)
+		return nil, fmt.Errorf("CreateTask: %w", err)
+	}
+	return &task, nil
 }
 
-func (tr *taskRepo) GetTaskByID(ctx context.Context, tID uuid.UUID) (*model.Task, error) {
+func (r *taskRepo) GetTaskByID(ctx context.Context, taskID uuid.UUID) (*model.Task, error) {
 	query := `
 		SELECT id, task_title, task_description, created_at, updated_at, user_id FROM tasks
 		WHERE id = $1
 	`
 	var task model.Task
-	err := tr.db.QueryRowContext(ctx, query, tID).Scan(
+	err := r.db.QueryRowContext(ctx, query, taskID).Scan(
 		&task.ID,
 		&task.TaskTitle,
 		&task.TaskDescription,
@@ -49,30 +63,32 @@ func (tr *taskRepo) GetTaskByID(ctx context.Context, tID uuid.UUID) (*model.Task
 		&task.UserID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, nil
+			return nil, err
 		}
-		return nil, err
+		log.Printf("(task_repository) - [GetTaskByID] failed for task id %s: %v", taskID, err)
+		return nil, fmt.Errorf("GetTaskByID: %w", err)
 	}
 	return &task, nil
 }
 
-func (tr *taskRepo) GetTasksByUserID(ctx context.Context, uID uuid.UUID) ([]model.Task, error) {
+func (r *taskRepo) GetTasksByUserID(ctx context.Context, userID uuid.UUID) ([]model.Task, error) {
 	query := `
 		SELECT id, task_title, task_description, created_at, updated_at, user_id FROM tasks
 		WHERE user_id = $1
 	`
-	rows, err := tr.db.QueryContext(ctx, query, uID)
+	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, nil
+			return nil, err
 		}
-		return nil, err
+		log.Printf("(task_repository) - [GetTasksByUserID] failed for user id %s: %v", userID, err)
+		return nil, fmt.Errorf("GetTasksByUserID: %w", err)
 	}
 	// This one shouldn't be handle for most of the time as underlying connection pool willl handle cleanup.
-	// But for this one I just added it for showing that we can handle it too.
+	// But for this one I just added it for showing that we can handle closing error as well if necessary.
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Println("Couldn't close the rows:", err.Error())
+			log.Printf("(task_repository) - [GetTasksByUserID] Couldn't close the rows: %v", err)
 		}
 	}()
 
@@ -81,7 +97,7 @@ func (tr *taskRepo) GetTasksByUserID(ctx context.Context, uID uuid.UUID) ([]mode
 		var t model.Task
 		// Following go idiom to handle errors
 		if err := rows.Scan(&t.ID, &t.TaskTitle, &t.TaskDescription, &t.CreatedAt, &t.UpdatedAt, &t.UserID); err != nil {
-			log.Println("Cannot scan the row:", err.Error())
+			log.Printf("(task_repository) - [GetTasksByUserID] Cannot scan the row: %v", err)
 			continue
 		}
 		tasks = append(tasks, t)
@@ -89,20 +105,21 @@ func (tr *taskRepo) GetTasksByUserID(ctx context.Context, uID uuid.UUID) ([]mode
 	return tasks, nil
 }
 
-func (tr *taskRepo) GetTasks(ctx context.Context) ([]model.Task, error) {
+func (r *taskRepo) GetTasks(ctx context.Context) ([]model.Task, error) {
 	query := `
 		SELECT id, task_title, task_description, created_at, updated_at, user_id FROM tasks;
 	`
-	rows, err := tr.db.QueryContext(ctx, query)
+	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, nil
+			return nil, err
 		}
-		return nil, err
+		log.Printf("(task_repository) - [GetTasks] Cannot scan the row: %v", err)
+		return nil, fmt.Errorf("GetTasks: %w", err)
 	}
 	defer func() {
 		if err := rows.Close(); err != nil {
-			log.Println("Couldn't close the rows:", err.Error())
+			log.Printf("(task_repository) - [GetTasks] Couldn't close the rows: %v", err)
 		}
 	}()
 
@@ -110,7 +127,7 @@ func (tr *taskRepo) GetTasks(ctx context.Context) ([]model.Task, error) {
 	for rows.Next() {
 		var t model.Task
 		if err := rows.Scan(&t.ID, &t.TaskTitle, &t.TaskDescription, &t.CreatedAt, &t.UpdatedAt, &t.UserID); err != nil {
-			log.Println("Cannot scan the row:", err.Error())
+			log.Printf("(task_repository) - [GetTasks] Cannot scan the row: %v", err)
 			continue
 		}
 		tasks = append(tasks, t)
@@ -118,28 +135,50 @@ func (tr *taskRepo) GetTasks(ctx context.Context) ([]model.Task, error) {
 	return tasks, nil
 }
 
-func (tr *taskRepo) UpdateTask(ctx context.Context, task *model.TaskRequest) error {
+func (r *taskRepo) UpdateTask(ctx context.Context, req *model.TaskRequest) (*model.Task, error) {
 	query := `
-		UPDATE tasks SET task_title = $1, task_description = $2, user_id = $3 WHERE id = $4;
+		UPDATE tasks SET task_title = $1, task_description = $2, user_id = $3 WHERE id = $4
+		RETURNING id, task_title, task_description, created_at, updated_at, user_id;
 	`
-	if _, err := tr.db.ExecContext(ctx, query,
+	var task model.Task
+	err := r.db.QueryRowContext(ctx, query,
 		task.TaskTitle,
 		task.TaskDescription,
 		task.UserID,
-		task.ID); err == sql.ErrNoRows {
-		return nil
-	} else {
-		return err
+		task.ID,
+	).Scan(
+		&task.ID,
+		&task.TaskTitle,
+		&task.TaskDescription,
+		&task.CreatedAt,
+		&task.UpdatedAt,
+		&task.UserID,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, err
+		}
+		log.Printf("(task_repository) - [UpdateTask] Cannot update the task id %s: %v", req.ID, err)
+		return nil, fmt.Errorf("UpdateTask: %w", err)
 	}
+	return &task, nil
 }
 
-func (tr *taskRepo) DeleteTask(ctx context.Context, tID uuid.UUID) error {
+func (r *taskRepo) DeleteTask(ctx context.Context, taskID uuid.UUID) error {
 	query := `
 		DELETE FROM tasks WHERE id = $1;
 	`
-	if _, err := tr.db.ExecContext(ctx, query, tID); err == sql.ErrNoRows {
-		return nil
-	} else {
-		return err
+	result, err := r.db.ExecContext(ctx, query, taskID)
+	if err != nil {
+		log.Printf("(task_repository) - [DeleteTask] Couldn't delete the task id %d: %v", taskID, err)
+		return fmt.Errorf("DeleteTask: %w", err)
 	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("DeleteTask - rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
