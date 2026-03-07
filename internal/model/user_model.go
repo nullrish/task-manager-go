@@ -18,3 +18,8 @@ type UserRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
+
+type UserLoginResponse struct {
+	User  *User  `json:"user"`
+	Token string `json:"token"`
+}

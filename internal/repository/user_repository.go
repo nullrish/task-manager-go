@@ -3,10 +3,11 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
+	apperr "github.com/nullrish/task-manager-go/internal/errors"
 	"github.com/nullrish/task-manager-go/internal/model"
 )
 
@@ -41,8 +42,22 @@ func (r *userRepo) CreateUser(ctx context.Context, req *model.UserRequest) (*mod
 		&user.UpdatedAt,
 	)
 	if err != nil {
+		if pgErr, ok := err.(*pgconn.PgError); ok {
+			if pgErr.Code == "23505" {
+				switch pgErr.ConstraintName {
+				case "users_username_key":
+					return nil, &apperr.ConflictError{Message: "username already exists"}
+				case "users_email_key":
+					return nil, &apperr.ConflictError{Message: "email already exists"}
+				case "users_pkey":
+					return nil, &apperr.ConflictError{Message: "user already exist"}
+				default:
+					return nil, &apperr.ConflictError{Message: "duplicate input field"}
+				}
+			}
+		}
 		log.Printf("(user_repository) - [CreateUser] failed to create user %s: %v", req.Username, err)
-		return nil, fmt.Errorf("CreateUser: %w", err)
+		return nil, &apperr.DatabaseError{Message: err.Error()}
 	}
 	return &user, nil
 }
@@ -63,10 +78,10 @@ func (r *userRepo) GetUserByUsername(ctx context.Context, username string) (*mod
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, &apperr.NotFoundError{Resource: "user", ID: username}
 		}
 		log.Printf("(user_repository) - [GetUserByUsername] failed to get username %s: %v", username, err)
-		return nil, fmt.Errorf("GetUserByUsername: %w", err)
+		return nil, &apperr.DatabaseError{Message: err.Error()}
 	}
 	return &user, nil
 }
@@ -87,10 +102,10 @@ func (r *userRepo) GetUserByEmail(ctx context.Context, email string) (*model.Use
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, &apperr.NotFoundError{Resource: "user", ID: email}
 		}
 		log.Printf("(user_repository) - [GetUserByEmail] failed to get email %s: %v", email, err)
-		return nil, fmt.Errorf("GetUserByEmail: %w", err)
+		return nil, &apperr.DatabaseError{Message: err.Error()}
 	}
 	return &user, nil
 }
@@ -114,10 +129,10 @@ func (r *userRepo) UpdateUser(ctx context.Context, userID uuid.UUID, req *model.
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, &apperr.NotFoundError{Resource: "user", ID: userID.String()}
 		}
 		log.Printf("(user_repository) - [UpdateUser] failed to update user %s: %v", userID, err)
-		return nil, fmt.Errorf("UpdateUser: %w", err)
+		return nil, &apperr.DatabaseError{Message: err.Error()}
 	}
 	return &user, nil
 }
@@ -130,14 +145,14 @@ func (r *userRepo) DeleteUser(ctx context.Context, userID uuid.UUID) error {
 	result, err := r.db.ExecContext(ctx, query, userID)
 	if err != nil {
 		log.Printf("(user_repository) - [DeleteUser] failed to delete user %s: %v", userID, err)
-		return fmt.Errorf("DeleteUser: %w", err)
+		return &apperr.DatabaseError{Message: err.Error()}
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("DeleteUser - rows affected: %w", err)
+		return &apperr.DatabaseError{Message: "something went wrong while fetching rows affected"}
 	}
 	if rowsAffected == 0 {
-		return sql.ErrNoRows
+		return &apperr.NotFoundError{Resource: "user", ID: userID.String()}
 	}
 	return nil
 }

@@ -2,14 +2,13 @@ package service
 
 import (
 	"context"
-	"errors"
 
 	"github.com/google/uuid"
+	apperr "github.com/nullrish/task-manager-go/internal/errors"
 	"github.com/nullrish/task-manager-go/internal/middleware"
 	"github.com/nullrish/task-manager-go/internal/model"
 	"github.com/nullrish/task-manager-go/internal/repository"
 	"github.com/nullrish/task-manager-go/internal/util/hashing"
-	"github.com/nullrish/task-manager-go/internal/util/validator"
 )
 
 type AuthService struct {
@@ -20,79 +19,67 @@ func NewAuthService(repo repository.UserRepository) *AuthService {
 	return &AuthService{repo}
 }
 
-func (s *AuthService) RegisterUser(ctx context.Context, user *model.UserRequest) error {
+func (s *AuthService) RegisterUser(ctx context.Context, req *model.UserRequest) (*model.User, error) {
 	// If fields are empty then return error of missing field
-	if user.Username == "" || user.Email == "" || user.Password == "" {
-		return errors.New("missing fields required")
-	}
-	// Validate email address
-	if !validator.ValidateEmail(user.Email) {
-		return errors.New("invalid email address")
-	}
-	// Validate username
-	if !validator.ValidateUsername(user.Username) {
-		return errors.New("username can only contain letters, number and underscores (3-20 characters)")
-	}
-	// Validate password
-	if !validator.ValidatePassword(user.Password) {
-		return errors.New("password must be 8-32 chars, include uppercase, lowercase, number, and special char")
-	}
+	// if user.Username == "" || user.Email == "" || user.Password == "" {
+	// 	return nil, errors.New("missing fields required")
+	// }
+	// // Validate email address
+	// if !validator.ValidateEmail(user.Email) {
+	// 	return errors.New("invalid email address")
+	// }
+	// // Validate username
+	// if !validator.ValidateUsername(user.Username) {
+	// 	return errors.New("username can only contain letters, number and underscores (3-20 characters)")
+	// }
+	// // Validate password
+	// if !validator.ValidatePassword(user.Password) {
+	// 	return errors.New("password must be 8-32 chars, include uppercase, lowercase, number, and special char")
+	// }
 	// Check if username already exists.
-	if existing, err := s.repo.GetUserByUsername(ctx, user.Username); err != nil {
-		return err
-	} else if existing != nil {
-		return errors.New("username already exists")
-	}
-	// Check if email is already registered.
-	if existing, err := s.repo.GetUserByEmail(ctx, user.Email); err != nil {
-		return err
-	} else if existing != nil {
-		return errors.New("email already exists")
-	}
 	var err error
-	user.Password, err = hashing.HashPassword(user.Password)
+	req.Password, err = hashing.HashPassword(req.Password)
 	if err != nil {
-		return errors.New("failed to hash the password")
+		return nil, &apperr.UnknownError{}
 	}
-	return s.repo.CreateUser(ctx, user)
+	return s.repo.CreateUser(ctx, req)
 }
 
-func (s *AuthService) LoginUser(ctx context.Context, user *model.UserRequest) (string, error) {
+func (s *AuthService) LoginUser(ctx context.Context, req *model.UserRequest) (*model.UserLoginResponse, error) {
 	// If fields are empty then return error of missing field
-	if user.Username == "" && user.Email == "" {
-		return "", errors.New("enter username and email")
-	}
-
-	var u *model.User
+	var user *model.User
 	var err error
-	if user.Email != "" {
-		u, err = s.repo.GetUserByEmail(ctx, user.Email)
-		if err != nil {
-			return "", err
-		}
-		if u == nil {
-			return "", errors.New("invalid login or password")
+	if req.Email != "" {
+		user, err = s.repo.GetUserByEmail(ctx, req.Email)
+		if user == nil {
+			return nil, err
 		}
 	} else {
-		u, err = s.repo.GetUserByUsername(ctx, user.Username)
-		if err != nil {
-			return "", err
-		}
-		if u == nil {
-			return "", errors.New("invalid login or password")
+		user, err = s.repo.GetUserByUsername(ctx, req.Username)
+		if user == nil {
+			return nil, err
 		}
 	}
-	matched := hashing.CheckHashedPassword(user.Password, u.Password)
+	matched := hashing.CheckHashedPassword(req.Password, user.Password)
 	if matched {
-		return middleware.GenerateNewUserToken(u.ID)
+		token, err := middleware.GenerateNewUserToken(user.ID)
+		if err != nil {
+			return nil, &apperr.UnknownError{}
+		}
+		return &model.UserLoginResponse{
+			User:  user,
+			Token: token,
+		}, nil
+
 	} else {
-		return "", errors.New("invalid login or password")
+		return nil, &apperr.UnknownError{}
 	}
 }
 
 func (s *AuthService) GenerateRefreshToken(ctx context.Context, userID uuid.UUID) (string, error) {
-	if userID.String() == "" {
-		return "", errors.New("invalid user id")
+	token, err := middleware.GenerateNewUserToken(userID)
+	if err != nil {
+		return "", &apperr.UnknownError{}
 	}
-	return middleware.GenerateNewUserToken(userID)
+	return token, nil
 }

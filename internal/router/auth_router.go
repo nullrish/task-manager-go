@@ -9,7 +9,7 @@ import (
 	"github.com/nullrish/task-manager-go/internal/service"
 )
 
-func ConfigureAuthRoutes(r fiber.Router, db *sql.DB) {
+func configureAuthRoutes(r fiber.Router, db *sql.DB) {
 	repo := repository.NewUserRepository(db)
 	s := service.NewAuthService(repo)
 	h := handler.NewAuthHandler(s)

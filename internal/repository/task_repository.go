@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"github.com/google/uuid"
+	apperr "github.com/nullrish/task-manager-go/internal/errors"
 	"github.com/nullrish/task-manager-go/internal/model"
 )
 
@@ -43,7 +44,7 @@ func (r *taskRepo) CreateTask(ctx context.Context, req *model.TaskRequest) (*mod
 	)
 	if err != nil {
 		log.Printf("(task_repository) - [CreateTask] failed for user %s: %v", req.UserID, err)
-		return nil, fmt.Errorf("CreateTask: %w", err)
+		return nil, &apperr.DatabaseError{Message: err.Error()}
 	}
 	return &task, nil
 }
@@ -63,10 +64,10 @@ func (r *taskRepo) GetTaskByID(ctx context.Context, taskID uuid.UUID) (*model.Ta
 		&task.UserID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, &apperr.NotFoundError{Resource: "task", ID: taskID.String()}
 		}
 		log.Printf("(task_repository) - [GetTaskByID] failed for task id %s: %v", taskID, err)
-		return nil, fmt.Errorf("GetTaskByID: %w", err)
+		return nil, &apperr.DatabaseError{Message: err.Error()}
 	}
 	return &task, nil
 }
@@ -79,10 +80,10 @@ func (r *taskRepo) GetTasksByUserID(ctx context.Context, userID uuid.UUID) ([]mo
 	rows, err := r.db.QueryContext(ctx, query, userID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, &apperr.NotFoundError{Resource: "task", ID: userID.String()}
 		}
 		log.Printf("(task_repository) - [GetTasksByUserID] failed for user id %s: %v", userID, err)
-		return nil, fmt.Errorf("GetTasksByUserID: %w", err)
+		return nil, &apperr.DatabaseError{Message: err.Error()}
 	}
 	// This one shouldn't be handle for most of the time as underlying connection pool willl handle cleanup.
 	// But for this one I just added it for showing that we can handle closing error as well if necessary.
@@ -112,7 +113,7 @@ func (r *taskRepo) GetTasks(ctx context.Context) ([]model.Task, error) {
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, &apperr.NotFoundError{Resource: "task", ID: ""}
 		}
 		log.Printf("(task_repository) - [GetTasks] Cannot scan the row: %v", err)
 		return nil, fmt.Errorf("GetTasks: %w", err)
@@ -156,10 +157,10 @@ func (r *taskRepo) UpdateTask(ctx context.Context, req *model.TaskRequest) (*mod
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, err
+			return nil, &apperr.NotFoundError{Resource: "task", ID: req.ID.String()}
 		}
 		log.Printf("(task_repository) - [UpdateTask] Cannot update the task id %s: %v", req.ID, err)
-		return nil, fmt.Errorf("UpdateTask: %w", err)
+		return nil, &apperr.DatabaseError{Message: err.Error()}
 	}
 	return &task, nil
 }
@@ -171,14 +172,14 @@ func (r *taskRepo) DeleteTask(ctx context.Context, taskID uuid.UUID) error {
 	result, err := r.db.ExecContext(ctx, query, taskID)
 	if err != nil {
 		log.Printf("(task_repository) - [DeleteTask] Couldn't delete the task id %d: %v", taskID, err)
-		return fmt.Errorf("DeleteTask: %w", err)
+		return &apperr.DatabaseError{Message: err.Error()}
 	}
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("DeleteTask - rows affected: %w", err)
+		return &apperr.DatabaseError{Message: "something went wrong while fecthing row affected"}
 	}
 	if rowsAffected == 0 {
-		return sql.ErrNoRows
+		return &apperr.NotFoundError{Resource: "task", ID: taskID.String()}
 	}
 	return nil
 }
