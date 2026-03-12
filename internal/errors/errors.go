@@ -49,3 +49,11 @@ type DatabaseError struct {
 func (e *DatabaseError) Error() string {
 	return fmt.Sprintf("something wrong with database query: %s", e.Message)
 }
+
+type InternalServerError struct {
+	Message string
+}
+
+func (e *InternalServerError) Error() string {
+	return fmt.Sprintf("internal server error: %s", e.Message)
+}

@@ -10,7 +10,7 @@ import (
 )
 
 type AuthHandler struct {
-	s *service.AuthService
+	service *service.AuthService
 }
 
 func NewAuthHandler(s *service.AuthService) *AuthHandler {
@@ -52,7 +52,7 @@ func (h *AuthHandler) RegisterUser(c fiber.Ctx) error {
 		}
 	}
 
-	user, err := h.s.RegisterUser(c, req)
+	user, err := h.service.RegisterUser(c.Context(), req)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func (h *AuthHandler) LoginUser(c fiber.Ctx) error {
 		return &apperr.ValidationError{Field: "auth", Message: "please enter email or username"}
 	}
 
-	login, err := h.s.LoginUser(c, req)
+	login, err := h.service.LoginUser(c.Context(), req)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func (h *AuthHandler) RefreshToken(c fiber.Ctx) error {
 	if err != nil {
 		return &apperr.ValidationError{Field: "id", Message: "invalid user id"}
 	}
-	token, err := h.s.GenerateRefreshToken(c, userID)
+	token, err := h.service.GenerateRefreshToken(c.Context(), userID)
 	if err != nil {
 		return err
 	}

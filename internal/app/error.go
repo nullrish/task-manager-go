@@ -12,12 +12,13 @@ import (
 
 func errorHandler(c fiber.Ctx, err error) error {
 	var (
-		database   *apperr.DatabaseError
-		business   *apperr.BusinessError
-		conflict   *apperr.ConflictError
-		notFound   *apperr.NotFoundError
-		validation *apperr.ValidationError
-		unknown    *apperr.UnknownError
+		database       *apperr.DatabaseError
+		business       *apperr.BusinessError
+		conflict       *apperr.ConflictError
+		notFound       *apperr.NotFoundError
+		validation     *apperr.ValidationError
+		unknown        *apperr.UnknownError
+		internalServer *apperr.InternalServerError
 	)
 	switch {
 	case errors.As(err, &database):
@@ -43,6 +44,11 @@ func errorHandler(c fiber.Ctx, err error) error {
 	case errors.As(err, &validation):
 		return c.Status(fiber.StatusBadRequest).JSON(&model.Response{
 			Message: "Invalid Input!",
+			Error:   err,
+		})
+	case errors.As(err, &internalServer):
+		return c.Status(fiber.StatusInternalServerError).JSON(&model.Response{
+			Message: "Something went wrong while processing the request.",
 			Error:   err,
 		})
 	case errors.As(err, &unknown):
