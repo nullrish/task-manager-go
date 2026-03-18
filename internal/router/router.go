@@ -4,20 +4,45 @@ import (
 	"database/sql"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/nullrish/task-manager-go/internal/handler"
 	"github.com/nullrish/task-manager-go/internal/middleware"
+	"github.com/nullrish/task-manager-go/internal/repository"
+	"github.com/nullrish/task-manager-go/internal/service"
 )
 
 func ConfigureRoutes(app *fiber.App, db *sql.DB) {
 	api := app.Group("/api")
 
 	r := api.Group("/auth")
-	configureAuthRoutes(r, db)
 
-	// Configure JWT middleware here
+	// Register dependencies for auth/user end points.
+	userRepo := repository.NewUserRepository(db)
+	authServ := service.NewAuthService(userRepo)
+	authHandler := handler.NewAuthHandler(authServ)
+
+	// Register endpoints for auth.
+	r.Post("/register", authHandler.RegisterUser)
+	r.Post("/login", authHandler.LoginUser)
+	r.Post("/refresh", authHandler.RefreshToken)
+
+	// Configure jwt middelware for task related routes.
 	app.Use(middleware.AuthMiddleware())
 
 	r = api.Group("/task")
-	configureTaskRouter(r, db)
+
+	// Register dependecnies for task end points.
+	taskRepo := repository.NewTaskRepository(db)
+	taskServ := service.NewTaskService(taskRepo)
+	taskHandler := handler.NewTaskHandler(taskServ)
+
+	// Register endpoints for tasks.
+	r.Post("/create", taskHandler.CreateTask)
+	r.Put("/update", taskHandler.UpdateTask)
+	r.Get("/by-task-id/:id", taskHandler.GetTask)
+	r.Get("/by-user-id/:id", taskHandler.GetUserTasks)
+	r.Get("/all", taskHandler.GetTasks)
+	r.Delete("/:id", taskHandler.DeleteTask)
+
 	// Test JWT middleware restriction without Authorization Header
 	r.Get("/restricted", func(c fiber.Ctx) error {
 		return c.SendString("This one is restricted")
