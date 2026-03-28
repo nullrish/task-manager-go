@@ -30,3 +30,34 @@ This project is based on RESTful API:
 | GET    | /api/task/by-user-id/{userId} | Get tasks by user id |
 | GET    | /api/task/all | Get all tasks |
 | DELETE | /api/task/{taskId} | Delete the task |
+
+### How to run?
+
+**Setting .env file**
+
+- Copy example.env to .env and fill the values accordingly
+
+```
+DB_USER=myuser
+DB_PASSWORD=mypassword
+DB_PORT=5432
+DB_NAME=mydb
+DB_HOST=localhost
+
+# Generate using command (if linux): openssl rand -base64 32
+JWT_KEY=YOUR_JWT_KEY
+```
+
+**Migration**
+
+```bash
+go run migration.go```
+
+**Running the project**
+
+```bash
+go run main.go```
+
+**Building the project**
+```bash
+go build -o taskmanager .```
