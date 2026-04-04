@@ -7,9 +7,9 @@ import (
 
 	"github.com/google/uuid"
 	apperr "github.com/nullrish/task-manager-go/internal/errors"
-	"github.com/nullrish/task-manager-go/internal/middleware"
 	"github.com/nullrish/task-manager-go/internal/model"
 	"github.com/nullrish/task-manager-go/internal/repository"
+	"github.com/nullrish/task-manager-go/internal/util"
 	"github.com/nullrish/task-manager-go/internal/util/hashing"
 )
 
@@ -68,7 +68,7 @@ func (s *AuthService) LoginUser(ctx context.Context, req *model.UserRequest) (*m
 	}
 	matched := hashing.CheckHashedPassword(req.Password, user.Password)
 	if matched {
-		token, err := middleware.GenerateNewUserToken(user.ID, "refresh")
+		token, err := util.GenerateNewUserToken(user.ID, "refresh")
 		if err != nil {
 			return nil, &apperr.InternalServerError{Message: "failed to generate login token"}
 		}
@@ -85,7 +85,7 @@ func (s *AuthService) LoginUser(ctx context.Context, req *model.UserRequest) (*m
 }
 
 func (s *AuthService) GenerateRefreshToken(ctx context.Context, userID uuid.UUID) (string, error) {
-	token, err := middleware.GenerateNewUserToken(userID, "refresh")
+	token, err := util.GenerateNewUserToken(userID, "refresh")
 	if err != nil {
 		return "", &apperr.InternalServerError{Message: "failed to generate login token"}
 	}

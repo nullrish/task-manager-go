@@ -6,6 +6,7 @@ import (
 	apperr "github.com/nullrish/task-manager-go/internal/errors"
 	"github.com/nullrish/task-manager-go/internal/model"
 	"github.com/nullrish/task-manager-go/internal/service"
+	"github.com/nullrish/task-manager-go/internal/util"
 	"github.com/nullrish/task-manager-go/internal/util/validator"
 )
 
@@ -82,18 +83,39 @@ func (h *AuthHandler) LoginUser(c fiber.Ctx) error {
 	})
 }
 
-func (h *AuthHandler) RefreshToken(c fiber.Ctx) error {
-	idParam := c.Params("id", "")
-	userID, err := uuid.Parse(idParam)
-	if err != nil {
-		return &apperr.ValidationError{Field: "id", Message: "invalid user id"}
+//
+// func (h *AuthHandler) RefreshToken(c fiber.Ctx) error {
+// 	idParam := c.Params("id", "")
+// 	userID, err := uuid.Parse(idParam)
+// 	if err != nil {
+// 		return &apperr.ValidationError{Field: "id", Message: "invalid user id"}
+// 	}
+// 	token, err := h.service.GenerateRefreshToken(c.Context(), userID)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return c.JSON(&model.Response{
+// 		Message: "Successfully generated refresh token!",
+// 		Data:    token,
+// 	})
+// }
+
+func (h *AuthHandler) GenerateToken(c fiber.Ctx) error {
+	tokenType := model.TokenType(c.Params("type", "refresh"))
+	if tokenType.IsValid() {
+		return &apperr.ValidationError{Field: "type", Message: "invalid token id [bearer, refresh, reset, verify]"}
 	}
-	token, err := h.service.GenerateRefreshToken(c.Context(), userID)
+	userIDParam := c.Params("userID", "")
+	userID, err := uuid.Parse(userIDParam)
 	if err != nil {
-		return err
+		return &apperr.ValidationError{Field: "userID", Message: "Invalid user id"}
+	}
+	token, err := util.GenerateNewUserToken(userID, tokenType.String())
+	if err != nil {
+		return &apperr.InternalServerError{Message: "failed to generate token"}
 	}
 	return c.JSON(&model.Response{
-		Message: "Successfully generated refresh token!",
+		Message: "Successfully generated token",
 		Data:    token,
 	})
 }

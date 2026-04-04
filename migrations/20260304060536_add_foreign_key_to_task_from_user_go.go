@@ -21,6 +21,8 @@ func upAddForeignKeyToTaskFromUserGo(ctx context.Context, tx *sql.Tx) error {
 			ALTER TABLE tasks
 			ADD CONSTRAINT fk_user_id
 			FOREIGN KEY (user_id) REFERENCES users(id);
+			
+		
 		`)
 	return err
 }

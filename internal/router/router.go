@@ -17,13 +17,14 @@ func ConfigureRoutes(app *fiber.App, db *sql.DB) {
 
 	// Register dependencies for auth/user end points.
 	userRepo := repository.NewUserRepository(db)
-	authServ := service.NewAuthService(userRepo)
+	tokenRepo := repository.NewTokenRepository(db)
+	authServ := service.NewAuthService(userRepo, tokenRepo)
 	authHandler := handler.NewAuthHandler(authServ)
 
 	// Register endpoints for auth.
 	r.Post("/register", authHandler.RegisterUser)
 	r.Post("/login", authHandler.LoginUser)
-	r.Post("/refresh", authHandler.RefreshToken)
+	r.Post("/token/:type/:userID", authHandler.GenerateToken)
 
 	// Configure jwt middelware for task related routes.
 	app.Use(middleware.AuthMiddleware())
